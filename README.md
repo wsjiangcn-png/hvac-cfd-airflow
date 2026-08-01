@@ -25,4 +25,9 @@ python -m app.main "Optimize airflow with damper adjustments to reduce pressure 
 - Pipelines: `hvac_airflow_pipeline`, `hvac_optimize_dampers_pipeline`
 - Solvers are **stubs** for demo; replace `run_rans_cfd` with a real CFD backend later
 
-See [scenarios/hvac_duct_airflow.md](scenarios/hvac_duct_airflow.md).
+## Documentation
+
+| Doc | Contents |
+|-----|----------|
+| [docs/IMPLEMENTATION_REPORT.md](docs/IMPLEMENTATION_REPORT.md) | **Full build steps, architecture, troubleshooting, checklist** |
+| [scenarios/hvac_duct_airflow.md](scenarios/hvac_duct_airflow.md) | Scenario description and skill mapping |
