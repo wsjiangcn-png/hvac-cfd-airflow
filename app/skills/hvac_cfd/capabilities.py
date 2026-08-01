@@ -71,7 +71,6 @@ def run_rans_cfd(input: dict) -> dict:
     fracs = input.get("damper_fractions") or []
     balance = 1.0
     if isinstance(fracs, list) and fracs:
-        # More open overall dampers slightly reduce system ΔP (toy model)
         balance = sum(_f(x, 0.5) for x in fracs) / max(len(fracs), 1)
         balance = max(0.4, min(1.2, balance))
     dp = round((80.0 + 12.0 * (mdot ** 2)) / balance, 1)
@@ -156,7 +155,8 @@ def adjust_dampers(input: dict) -> dict:
     }
 
 
-composite(
+# IMPORTANT: assign composites to module globals so BundleLoader can discover them
+hvac_airflow_pipeline = composite(
     name="hvac_airflow_pipeline",
     description=(
         "Full HVAC airflow study: build duct case → steady RANS k-ω SST → "
@@ -173,7 +173,7 @@ composite(
     output_schema={"ok": "bool", "passed": "bool", "output": "str"},
 )
 
-composite(
+hvac_optimize_dampers_pipeline = composite(
     name="hvac_optimize_dampers_pipeline",
     description=(
         "Optimize airflow distribution: CFD baseline → adjust dampers → "
