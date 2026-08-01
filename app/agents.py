@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from agent_skill_framework import (
@@ -20,15 +21,17 @@ from app.skill_aliases import SKILL_ALIASES
 APP_ROOT = Path(__file__).resolve().parent
 HVAC = APP_ROOT / "skills" / "hvac_cfd"
 
+_REF_RE = re.compile(r"\$(?P<step>[A-Za-z0-9_]+)\.output(?:\.|$)")
+
 
 def _wants_optimize(text: str) -> bool:
     t = text.lower()
-    keys = ("optim", "damper", "balance", "reduce pressure", "improve comfort", "uniform")
+    keys = ("optim", "damper", "balance", "reduce pressure", "improve comfort")
     return any(k in t for k in keys)
 
 
 def _offline_compile(plan: Plan, catalog_prompt: str) -> str:
-    """Deterministic workflow when LLM is offline."""
+    """Deterministic single-step pipeline (composite expands internally)."""
     text = f"{(plan.goal or '')} {' '.join(plan.intents or [])}"
     skill = (
         "hvac_optimize_dampers_pipeline"
@@ -51,6 +54,27 @@ def _offline_compile(plan: Plan, catalog_prompt: str) -> str:
     })
 
 
+def _workflow_refs_ok(data: dict) -> bool:
+    """True if every $stepId.output ref names a real step id (not a skill name)."""
+    steps = data.get("steps") or []
+    if not steps:
+        return False
+    ids = {str(s.get("id")) for s in steps if s.get("id")}
+    if not ids:
+        return False
+    for s in steps:
+        payload = s.get("input") or {}
+        for v in payload.values():
+            if not isinstance(v, str) or not v.startswith("$"):
+                continue
+            m = _REF_RE.match(v)
+            if not m:
+                return False
+            if m.group("step") not in ids:
+                return False
+    return True
+
+
 def build_system() -> tuple[Agent, str]:
     registry = SkillRegistry()
     knowledge = KnowledgeSkillStore()
@@ -71,50 +95,48 @@ def build_system() -> tuple[Agent, str]:
         status_parts.append(f"llm=off ({exc})")
 
     schemas = {s.name: (s.input_schema or {}) for s in loader.catalog}
+    known = set(registry.names())
 
     def compile_with_fallback(plan: Plan, catalog_prompt: str) -> str:
+        # Prefer a single composite step — avoids fragile multi-step $refs from the LLM
+        offline = _offline_compile(plan, catalog_prompt)
+
         if llm is None:
-            return _offline_compile(plan, catalog_prompt)
+            return offline
+
         try:
-            data = llm.compile_plan(
-                plan.goal,
-                plan.intents,
-                catalog_prompt,
-                skill_schemas=schemas,
-                aliases=SKILL_ALIASES,
-            )
-            if isinstance(data, dict) and data.get("steps"):
-                data = sanitize_workflow_dict(
-                    data,
-                    skill_schemas=schemas,
-                    known_skills=set(registry.names()),
-                    aliases=SKILL_ALIASES,
-                )
-                if data.get("steps"):
-                    return json.dumps(data)
-        except TypeError:
-            # Older compile_plan without aliases=
             try:
                 data = llm.compile_plan(
                     plan.goal,
                     plan.intents,
                     catalog_prompt,
                     skill_schemas=schemas,
+                    aliases=SKILL_ALIASES,
                 )
-                if isinstance(data, dict) and data.get("steps"):
-                    data = sanitize_workflow_dict(
-                        data,
-                        skill_schemas=schemas,
-                        known_skills=set(registry.names()),
-                        aliases=SKILL_ALIASES,
-                    )
-                    if data.get("steps"):
-                        return json.dumps(data)
-            except Exception:
-                pass
+            except TypeError:
+                data = llm.compile_plan(
+                    plan.goal,
+                    plan.intents,
+                    catalog_prompt,
+                    skill_schemas=schemas,
+                )
+            if not isinstance(data, dict):
+                return offline
+            data = sanitize_workflow_dict(
+                data,
+                skill_schemas=schemas,
+                known_skills=known,
+                aliases=SKILL_ALIASES,
+            )
+            # Accept LLM only if it chose a single known composite (or valid $sN refs)
+            steps = data.get("steps") or []
+            if len(steps) == 1 and steps[0].get("skill") in known:
+                return json.dumps(data)
+            if _workflow_refs_ok(data):
+                return json.dumps(data)
         except Exception:
             pass
-        return _offline_compile(plan, catalog_prompt)
+        return offline
 
     cfd_agent = Agent(
         registry=registry,
