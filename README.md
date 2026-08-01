@@ -1,19 +1,28 @@
-# Hvac Cfd Airflow
+# hvac-cfd-airflow
 
-Smallest runnable application on **agent-skill-framework**.
+Application on [agent-skill-framework](https://github.com/wsjiangcn-png/Agent-Skill-Framework) for:
 
-## Setup
+**CFD — HVAC System Airflow Optimization** (steady RANS, k-ω SST).
+
+Scaffolded from [agent-skill-devkit](https://github.com/wsjiangcn-png/agent-skill-devkit); domain code lives only here.
+
+## Install
 
 ```bash
-pip install -e /path/to/Agent-Skill-Framework
+python3 -m venv .venv && source .venv/bin/activate
+pip install agent_skill_framework-*.whl   # or: pip install -e ../Agent-Skill-Framework
 pip install -e .
-python -m app.main "Say hello to Ada"
 ```
 
-## Layout
+## Run
 
-- `app/agents.py` — builds the agent + loads skill bundle
-- `app/skills/hello/` — one knowledge + capability bundle
-- `app/main.py` — CLI entrypoint
+```bash
+python -m app.main
+python -m app.main "Optimize airflow with damper adjustments to reduce pressure drop"
+```
 
-See the [agent-skill-devkit docs](https://github.com/wsjiangcn-png/agent-skill-devkit/tree/main/docs) for the full guide.
+- Agents: `engineering_desk` → `cfd_agent`
+- Pipelines: `hvac_airflow_pipeline`, `hvac_optimize_dampers_pipeline`
+- Solvers are **stubs** for demo; replace `run_rans_cfd` with a real CFD backend later
+
+See [scenarios/hvac_duct_airflow.md](scenarios/hvac_duct_airflow.md).
