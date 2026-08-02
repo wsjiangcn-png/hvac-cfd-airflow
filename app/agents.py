@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
@@ -21,6 +22,12 @@ from app.skill_aliases import SKILL_ALIASES
 APP_ROOT = Path(__file__).resolve().parent
 HVAC = APP_ROOT / "skills" / "hvac_cfd"
 
+# Pipelines safe to schedule as a single Workflow step (expand inside CompositeSkill)
+_SAFE_PIPELINES = frozenset({
+    "hvac_airflow_pipeline",
+    "hvac_optimize_dampers_pipeline",
+})
+
 _REF_RE = re.compile(r"\$(?P<step>[A-Za-z0-9_]+)\.output(?:\.|$)")
 
 
@@ -30,7 +37,7 @@ def _wants_optimize(text: str) -> bool:
     return any(k in t for k in keys)
 
 
-def _offline_compile(plan: Plan, catalog_prompt: str) -> str:
+def _offline_compile(plan: Plan, catalog_prompt: str = "") -> str:
     """Deterministic single-step pipeline (composite expands internally)."""
     text = f"{(plan.goal or '')} {' '.join(plan.intents or [])}"
     skill = (
@@ -54,23 +61,43 @@ def _offline_compile(plan: Plan, catalog_prompt: str) -> str:
     })
 
 
-def _workflow_refs_ok(data: dict) -> bool:
-    """True if every $stepId.output ref names a real step id (not a skill name)."""
+def _workflow_is_safe(data: dict, known_skills: set[str]) -> bool:
+    """
+    Accept only:
+      - exactly one step whose skill is a known SAFE pipeline, or
+      - multi-step graphs where every $ref targets a step id listed in depends_on
+        and step ids look like s1, s2, ... (not skill names).
+    """
     steps = data.get("steps") or []
     if not steps:
         return False
+
+    if len(steps) == 1:
+        sk = steps[0].get("skill")
+        return sk in _SAFE_PIPELINES and sk in known_skills
+
     ids = {str(s.get("id")) for s in steps if s.get("id")}
-    if not ids:
-        return False
+    # Reject skill-named step ids (common LLM failure mode)
+    for sid in ids:
+        if sid in known_skills:
+            return False
+        if not re.fullmatch(r"s\d+", sid):
+            return False
+
     for s in steps:
+        deps = set(s.get("depends_on") or [])
         payload = s.get("input") or {}
+        skill = s.get("skill")
+        if skill not in known_skills:
+            return False
         for v in payload.values():
             if not isinstance(v, str) or not v.startswith("$"):
                 continue
             m = _REF_RE.match(v)
             if not m:
                 return False
-            if m.group("step") not in ids:
+            ref = m.group("step")
+            if ref not in ids or ref not in deps:
                 return False
     return True
 
@@ -94,14 +121,22 @@ def build_system() -> tuple[Agent, str]:
     except Exception as exc:
         status_parts.append(f"llm=off ({exc})")
 
+    # Default: offline composite only (reliable demos).
+    # Set HVAC_LLM_COMPILE=1 to allow validated LLM workflows.
+    use_llm_compile = os.environ.get("HVAC_LLM_COMPILE", "").strip().lower() in {
+        "1", "true", "yes", "on",
+    }
+    status_parts.append(
+        "compile=llm+guard" if (llm and use_llm_compile) else "compile=offline-pipeline"
+    )
+
     schemas = {s.name: (s.input_schema or {}) for s in loader.catalog}
     known = set(registry.names())
 
     def compile_with_fallback(plan: Plan, catalog_prompt: str) -> str:
-        # Prefer a single composite step — avoids fragile multi-step $refs from the LLM
         offline = _offline_compile(plan, catalog_prompt)
 
-        if llm is None:
+        if not use_llm_compile or llm is None:
             return offline
 
         try:
@@ -128,11 +163,7 @@ def build_system() -> tuple[Agent, str]:
                 known_skills=known,
                 aliases=SKILL_ALIASES,
             )
-            # Accept LLM only if it chose a single known composite (or valid $sN refs)
-            steps = data.get("steps") or []
-            if len(steps) == 1 and steps[0].get("skill") in known:
-                return json.dumps(data)
-            if _workflow_refs_ok(data):
+            if _workflow_is_safe(data, known):
                 return json.dumps(data)
         except Exception:
             pass
@@ -146,7 +177,7 @@ def build_system() -> tuple[Agent, str]:
             "HVAC CFD airflow duct diffuser pressure drop RANS "
             "k-omega turbulence damper thermal comfort uniformity"
         ),
-        llm=llm,
+        llm=llm,  # still used for plan() goal/intents when available
         compile_llm_call=compile_with_fallback,
         knowledge_store=knowledge,
         knowledge_trigger="soft",
