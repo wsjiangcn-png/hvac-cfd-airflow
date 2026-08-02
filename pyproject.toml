@@ -5,13 +5,14 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hvac-cfd-airflow"
 version = "0.1.0"
-description = "Minimal application on agent-skill-framework"
+description = "HVAC duct airflow CFD desk on agent-skill-framework"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = []
 
 [project.optional-dependencies]
 dev = ["pytest"]
+gui = ["streamlit>=1.28"]
 
 [tool.setuptools.packages.find]
 where = ["."]
