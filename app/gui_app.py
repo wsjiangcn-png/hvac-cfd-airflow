@@ -102,20 +102,15 @@ def _build_dag_mermaid(
             expand_step_ids=expand_ids or None,
             max_depth=max_depth,
         )
-    # Fallback: flat mermaid from Agent.preview
     return str(preview.get("mermaid_workflow") or "flowchart TD\n  empty([no diagram])")
 
 
 def _render_mermaid(diagram: str, *, height: int = 420) -> None:
-    """Render Mermaid in the browser; always show source below."""
+    """Render Mermaid once via CDN HTML (avoid duplicate markdown + HTML)."""
     if not diagram.strip():
         st.warning("Empty diagram.")
         return
 
-    # Markdown fence (works when Streamlit / browser extension supports it)
-    st.markdown(f"```mermaid\n{diagram}\n```")
-
-    # Explicit HTML + Mermaid CDN (reliable local rendering)
     escaped = html.escape(diagram)
     snippet = f"""
 <!DOCTYPE html>
@@ -179,7 +174,6 @@ def _render_workflow_dag(preview: dict[str, Any]) -> None:
     )
     _render_mermaid(diagram, height=440)
 
-    # Route DAG (agents)
     route_mmd = preview.get("mermaid_route")
     if route_mmd:
         st.markdown("**Agent route**")
@@ -231,7 +225,6 @@ def main() -> None:
     need_preview = preview_clicked or (
         auto_preview and prompt.strip() and "last_preview" not in st.session_state
     )
-    # Refresh preview when prompt text changes vs last
     if auto_preview and prompt.strip():
         if st.session_state.get("_preview_prompt") != prompt.strip():
             need_preview = True
