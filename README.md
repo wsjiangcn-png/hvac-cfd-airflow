@@ -10,9 +10,8 @@ Scaffolded from [agent-skill-devkit](https://github.com/wsjiangcn-png/agent-skil
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install agent_skill_framework-*.whl   # or: pip install -e ../Agent-Skill-Framework
+pip install -e ../Agent-Skill-Framework   # or wheel
 pip install -e .
-# optional GUI:
 pip install -e ".[gui]"
 ```
 
@@ -23,24 +22,35 @@ python -m app.main
 python -m app.main "Optimize airflow with damper adjustments to reduce pressure drop"
 ```
 
-## GUI (Streamlit)
+## GUI — domain desk
 
 ```bash
-pip install -e ".[gui]"
 streamlit run app/gui_app.py
 ```
 
-Opens a browser UI with presets (baseline study / optimize dampers), prompt editor, optional route/plan **preview**, and metric cards (ΔP, uniformity, TI, pass/fail).
-
+Presets, metric cards (ΔP, uniformity, TI), workflow DAG preview.  
 Use `streamlit run …` — not `python app/gui_app.py`.
+
+## GUI — agent-skill-ui styles (optional)
+
+Generic Style B / C / A shells on the same HVAC agents:
+
+```bash
+pip install -e ../agent-skill-ui
+streamlit run app/run_ui_prompt.py       # B — NL prompt desk
+streamlit run app/run_ui_assembler.py    # C — skill picker
+streamlit run app/run_ui_integrator.py   # A — pin pipeline
+```
+
+Bridge: `app/ui_bridge.py` (`build_system_ui`, `provide_registry`).
 
 - Agents: `engineering_desk` → `cfd_agent`
 - Pipelines: `hvac_airflow_pipeline`, `hvac_optimize_dampers_pipeline`
-- Solvers are **stubs** for demo; replace `run_rans_cfd` with a real CFD backend later
+- Solvers are **stubs** for demo
 
 ## Documentation
 
 | Doc | Contents |
 |------|----------|
-| [docs/IMPLEMENTATION_REPORT.md](docs/IMPLEMENTATION_REPORT.md) | Full build steps, architecture, troubleshooting |
-| [scenarios/hvac_duct_airflow.md](scenarios/hvac_duct_airflow.md) | Scenario description and skill mapping |
+| [docs/IMPLEMENTATION_REPORT.md](docs/IMPLEMENTATION_REPORT.md) | Full build steps |
+| [scenarios/hvac_duct_airflow.md](scenarios/hvac_duct_airflow.md) | Scenario mapping |
