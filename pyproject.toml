@@ -13,6 +13,9 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest"]
 gui = ["streamlit>=1.28"]
+# Style B/C/A shells — install agent-skill-ui from sibling checkout:
+#   pip install -e ../agent-skill-ui
+ui = ["streamlit>=1.28"]
 
 [tool.setuptools.packages.find]
 where = ["."]
