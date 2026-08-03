@@ -1,4 +1,9 @@
-"""HVAC duct CFD capabilities (stubs — swap run_rans_cfd for real solver/MCP later)."""
+"""HVAC duct CFD capabilities (stubs — swap run_rans_cfd for real solver/MCP later).
+
+Schema convention for agent-skill-ui I/O filter:
+  - "field": "float"     → required
+  - "field": "float?"    → optional (still accepted at runtime)
+"""
 from __future__ import annotations
 
 from agent_skill_framework import capability, composite
@@ -17,7 +22,7 @@ def _f(x, default: float) -> float:
     input_schema={
         "case_name": "str",
         "inlet_mass_flow_kg_s": "float",
-        "outlet_pressure_Pa": "float",
+        "outlet_pressure_Pa": "float?",
     },
     output_schema={
         "ok": "bool",
@@ -53,10 +58,13 @@ def build_duct_case(input: dict) -> dict:
     input_schema={
         "case_file": "str",
         "inlet_mass_flow_kg_s": "float",
-        "damper_fractions": "list",
+        # Optional: defaults to uniform dampers when omitted
+        "damper_fractions": "list?",
     },
     output_schema={
         "ok": "bool",
+        "case_file": "str",
+        "inlet_mass_flow_kg_s": "float",
         "delta_p_Pa": "float",
         "uniformity_index": "float",
         "max_ti_near_bends": "float",
@@ -98,8 +106,9 @@ def run_rans_cfd(input: dict) -> dict:
         "delta_p_Pa": "float",
         "uniformity_index": "float",
         "max_ti_near_bends": "float",
-        "max_delta_p_Pa": "float",
-        "min_uniformity": "float",
+        # Targets usually come from shared input JSON
+        "max_delta_p_Pa": "float?",
+        "min_uniformity": "float?",
     },
     output_schema={
         "ok": "bool",
@@ -135,7 +144,7 @@ def evaluate_hvac_metrics(input: dict) -> dict:
     description="Propose damper positions to balance branches and reduce pressure drop",
     input_schema={
         "branch_delta_p_Pa": "list",
-        "uniformity_index": "float",
+        "uniformity_index": "float?",
     },
     output_schema={
         "ok": "bool",
@@ -155,7 +164,6 @@ def adjust_dampers(input: dict) -> dict:
     }
 
 
-# IMPORTANT: assign composites to module globals so BundleLoader can discover them
 hvac_airflow_pipeline = composite(
     name="hvac_airflow_pipeline",
     description=(
@@ -166,9 +174,9 @@ hvac_airflow_pipeline = composite(
     input_schema={
         "case_name": "str",
         "inlet_mass_flow_kg_s": "float",
-        "outlet_pressure_Pa": "float",
-        "max_delta_p_Pa": "float",
-        "min_uniformity": "float",
+        "outlet_pressure_Pa": "float?",
+        "max_delta_p_Pa": "float?",
+        "min_uniformity": "float?",
     },
     output_schema={"ok": "bool", "passed": "bool", "output": "str"},
 )
@@ -189,8 +197,8 @@ hvac_optimize_dampers_pipeline = composite(
     input_schema={
         "case_name": "str",
         "inlet_mass_flow_kg_s": "float",
-        "max_delta_p_Pa": "float",
-        "min_uniformity": "float",
+        "max_delta_p_Pa": "float?",
+        "min_uniformity": "float?",
     },
     output_schema={"ok": "bool", "passed": "bool", "output": "str"},
 )
