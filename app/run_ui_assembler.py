@@ -1,8 +1,19 @@
-"""Style C — Skill assembler on HVAC registry.  streamlit run app/run_ui_assembler.py"""
+"""Style C — Skill assembler on HVAC registry.
+
+  cd ~/Projects/hvac-cfd-airflow
+  streamlit run app/run_ui_assembler.py
+"""
 from __future__ import annotations
 
-from app.ui_bridge import DEFAULT_INPUTS_JSON, DEFAULT_PROCESS, provide_registry
+import sys
+from pathlib import Path
 
+# Repo root must be on sys.path so `import app.*` works under Streamlit
+_ROOT = Path(__file__).resolve().parents[1]
+if str(_ROOT) not in sys.path:
+    sys.path.insert(0, str(_ROOT))
+
+from app.ui_bridge import DEFAULT_INPUTS_JSON, DEFAULT_PROCESS, provide_registry
 from agent_skill_ui.styles.assembler import run_assembler
 
 if __name__ == "__main__":
