@@ -8,14 +8,20 @@ version = "0.1.0"
 description = "HVAC duct airflow CFD desk on agent-skill-framework"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+    "agent-skill-framework>=0.9.0",
+]
 
 [project.optional-dependencies]
 dev = ["pytest"]
 gui = ["streamlit>=1.28"]
-# Style B/C/A shells — install agent-skill-ui from sibling checkout:
-#   pip install -e ../agent-skill-ui
+# Style B/C/A shells — also: pip install -e ../agent-skill-ui
 ui = ["streamlit>=1.28"]
+
+[project.urls]
+Homepage = "https://github.com/wsjiangcn-png/hvac-cfd-airflow"
+Framework = "https://github.com/wsjiangcn-png/Agent-Skill-Framework"
+UI = "https://github.com/wsjiangcn-png/agent-skill-ui"
 
 [tool.setuptools.packages.find]
 where = ["."]
