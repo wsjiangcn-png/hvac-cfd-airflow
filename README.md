@@ -10,7 +10,7 @@ Scaffolded from [agent-skill-devkit](https://github.com/wsjiangcn-png/agent-skil
 
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
-pip install -e ../Agent-Skill-Framework   # or wheel
+pip install -e ../Agent-Skill-Framework   # or wheel (requires agent-skill-framework>=0.9.0)
 pip install -e .
 pip install -e ".[gui]"
 ```
@@ -41,6 +41,9 @@ streamlit run app/run_ui_prompt.py       # B — NL prompt desk
 streamlit run app/run_ui_assembler.py    # C — skill picker
 streamlit run app/run_ui_integrator.py   # A — pin pipeline
 ```
+
+Optional concept edges (Style A/C):  
+`export AGENT_SKILL_ONTOLOGY=../Agent-Skill-Framework/examples/ontology/hvac_concepts.json`
 
 Bridge: `app/ui_bridge.py` (`build_system_ui`, `provide_registry`).
 
