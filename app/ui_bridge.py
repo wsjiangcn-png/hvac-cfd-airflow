@@ -1,5 +1,5 @@
 """
-Wire HVAC agents to agent-skill-ui (Prompt / Assembler / Integrator).
+Wire HVAC agents to agent-skill-ui (Prompt / Assembler / Integrator / Process tree).
 
   pip install -e ~/Projects/Agent-Skill-Framework
   pip install -e ~/Projects/agent-skill-ui
@@ -8,7 +8,7 @@ Wire HVAC agents to agent-skill-ui (Prompt / Assembler / Integrator).
   streamlit run app/run_ui_prompt.py
   streamlit run app/run_ui_assembler.py
   streamlit run app/run_ui_integrator.py
-  streamlit run app/run_ui_launcher.py
+  streamlit run app/run_ui_process_tree.py   # Style D
 """
 from __future__ import annotations
 
@@ -16,7 +16,6 @@ from typing import Any
 
 from app.agents import build_system
 
-# Prefer these composites in Style A / C defaults
 DEFAULT_PROCESS = "hvac_airflow_pipeline"
 DEFAULT_INPUTS_JSON = """{
   "case_name": "commercial_hvac",
@@ -45,7 +44,7 @@ def build_system_ui() -> tuple[Any, str]:
 
 def provide_registry() -> tuple[Any, list[Any], str]:
     """
-    ``(registry, catalog, status)`` for Style C / A.
+    ``(registry, catalog, status)`` for Style C / A / D.
 
     Desk routes to ``cfd_agent``; skills live on the specialist registry.
     """
