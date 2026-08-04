@@ -1,0 +1,12 @@
+HVAC CFD Airflow — Play / Evaluation Package
+
+Copyright (c) 2026 Wei-Shan Chiang. All rights reserved.
+
+Personal intellectual property of Wei-Shan Chiang; independent of any former employer.
+
+This package is provided for evaluation and study only. Solvers are stubs.
+
+No license is granted to redistribute, sublicense, or use in production without a
+separate written agreement with the Owner.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
