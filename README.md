@@ -62,5 +62,6 @@ Bridge: `app/ui_bridge.py` (`build_system_ui`, `provide_registry`).
 
 ## License and ownership
 
-**Copyright © 2024–2026 Wei-Shan Chiang. All rights reserved.**  
-Proprietary software owned by **Wei-Shan Chiang**. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+**Copyright © 2026 Wei-Shan Chiang. All rights reserved.**  
+This software is the personal intellectual property of Wei-Shan Chiang and is independent of any former employer.  
+Proprietary. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
