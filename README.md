@@ -57,3 +57,10 @@ Bridge: `app/ui_bridge.py` (`build_system_ui`, `provide_registry`).
 |------|----------|
 | [docs/IMPLEMENTATION_REPORT.md](docs/IMPLEMENTATION_REPORT.md) | Full build steps |
 | [scenarios/hvac_duct_airflow.md](scenarios/hvac_duct_airflow.md) | Scenario mapping |
+
+---
+
+## License and ownership
+
+**Copyright © 2024–2026 Wei-Shan Chiang. All rights reserved.**  
+Proprietary software owned by **Wei-Shan Chiang**. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
