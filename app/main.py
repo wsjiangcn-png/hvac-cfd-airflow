@@ -5,6 +5,7 @@ import json
 import sys
 
 from app.agents import build_system
+from app.license_gate import exit_on_license_error
 
 DEFAULT_PROMPT = (
     "Run steady RANS k-ω SST on the multi-branch HVAC duct network "
@@ -13,6 +14,7 @@ DEFAULT_PROMPT = (
 
 
 def main(prompt: str) -> dict:
+    exit_on_license_error()
     agent, status = build_system()
     print(status)
     result = agent.handle(prompt)
