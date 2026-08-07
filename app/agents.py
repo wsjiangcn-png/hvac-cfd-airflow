@@ -1,4 +1,13 @@
-"""Engineering desk + CFD specialist for HVAC airflow optimization."""
+"""Engineering desk + CFD specialist for HVAC airflow optimization.
+
+Skill ownership (ForgeDesk left rail):
+  - **Desk** (`engineering_desk`): empty registry — routes only.
+  - **cfd_agent**: all HVAC skills (case → RANS → metrics → damper pipelines).
+
+This product has a *single* domain specialist, so "Skills (this agent)" for
+CFD matches the product-wide Skill Repo by design. Split further only if you
+add more specialists (e.g. mesh vs solve vs post).
+"""
 from __future__ import annotations
 
 import json
@@ -103,6 +112,7 @@ def _workflow_is_safe(data: dict, known_skills: set[str]) -> bool:
 
 
 def build_system() -> tuple[Agent, str]:
+    # Single domain registry: all HVAC skills live on cfd_agent only
     registry = SkillRegistry()
     knowledge = KnowledgeSkillStore()
     loader = BundleLoader(registry, knowledge)
@@ -195,5 +205,7 @@ def build_system() -> tuple[Agent, str]:
         agent_registry=agent_reg,
         compile_llm_call=lambda plan, cat: json.dumps({"steps": []}),
     )
-    status_parts.append("route=engineering_desk→cfd_agent")
+    status_parts.append(
+        f"route=engineering_desk→cfd_agent (cfd_skills={len(known)})"
+    )
     return desk, " | ".join(status_parts)
