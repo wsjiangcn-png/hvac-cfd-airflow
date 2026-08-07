@@ -7,6 +7,9 @@ Skill ownership (ForgeDesk left rail):
 This product has a *single* domain specialist, so "Skills (this agent)" for
 CFD matches the product-wide Skill Repo by design. Split further only if you
 add more specialists (e.g. mesh vs solve vs post).
+
+Runtime requires a valid AFIPER1 license (edition=hvac-cfd or full-trial),
+same hard-gate model as Bracket FEA.
 """
 from __future__ import annotations
 
@@ -26,6 +29,7 @@ from agent_skill_framework import (
     sanitize_workflow_dict,
 )
 
+from app.license_gate import exit_on_license_error
 from app.skill_aliases import SKILL_ALIASES
 
 APP_ROOT = Path(__file__).resolve().parent
@@ -112,6 +116,8 @@ def _workflow_is_safe(data: dict, known_skills: set[str]) -> bool:
 
 
 def build_system() -> tuple[Agent, str]:
+    exit_on_license_error()
+
     # Single domain registry: all HVAC skills live on cfd_agent only
     registry = SkillRegistry()
     knowledge = KnowledgeSkillStore()
