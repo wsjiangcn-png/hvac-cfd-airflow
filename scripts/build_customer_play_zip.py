@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-Build a customer **play** zip for hvac-cfd-airflow.
+Build a customer **trial/play** zip for hvac-cfd-airflow.
 
-Layout:
+Layout (same model as Bracket FEA trial):
   - framework wheel from sibling Agent-Skill-Framework (or FRAMEWORK_REPO)
   - product surface from this repo's app/
-  - installers + run_demo.py at zip root
-  - no trial license gate (play / evaluation)
+  - installers + run_demo.py + **license.key** at zip root
+  - hard AFIPER1 gate (edition=hvac-cfd)
 
 Usage (from hvac-cfd-airflow root):
 
+  export AGENT_SKILL_LICENSE_SECRET='…'   # required for real customers
   python scripts/build_customer_play_zip.py
-  export FRAMEWORK_REPO=/path/to/Agent-Skill-Framework
+  python scripts/build_customer_play_zip.py --allow-dev-secret --days 30
 
 Output:
   deploy/dist/HVAC-CFD-Play-<app-version>.zip
@@ -24,12 +25,14 @@ import shutil
 import subprocess
 import sys
 import zipfile
+from datetime import date, timedelta
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
 APP_SRC = REPO / "app"
 PLAY_META = REPO / "deploy" / "customer_play"
 OUT_ROOT = REPO / "deploy" / "dist"
+EDITION = "hvac-cfd"
 
 INSTALLER_FILES = (
     "install.py",
@@ -97,18 +100,55 @@ def _copy_app(dest_app: Path) -> None:
     ignore = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "*.egg-info")
     shutil.copytree(APP_SRC, dest_app, ignore=ignore)
     (dest_app / "README.md").write_text(
-        "# HVAC CFD airflow (play surface)\n\n"
+        "# HVAC CFD airflow (trial surface)\n\n"
         "Commercial HVAC duct RANS demo on agent-skill-framework.\n\n"
+        "Requires valid **license.key** (same AFIPER1 mechanism as Bracket FEA).\n\n"
         "Framework is the wheel under `dist/`, not source.\n\n"
         "```bash\npython install.py\npython run_demo.py\n```\n",
         encoding="utf-8",
     )
 
 
+def _write_license_key(
+    path: Path,
+    *,
+    customer: str,
+    days: int,
+    allow_dev_secret: bool,
+) -> None:
+    sys.path.insert(0, str(_framework_repo() / "src"))
+    from agent_skill_framework.trial_license import (  # noqa: E402
+        generate_license_key,
+        using_default_secret,
+    )
+
+    if using_default_secret() and not allow_dev_secret:
+        raise SystemExit(
+            "AGENT_SKILL_LICENSE_SECRET is not set.\n"
+            "  Export a production secret, or pass --allow-dev-secret (local only)."
+        )
+    exp = date.today() + timedelta(days=max(1, days))
+    key = generate_license_key(
+        customer=customer,
+        expires_on=exp,
+        edition=EDITION,
+        tier="trial",
+    )
+    path.write_text(
+        "# AFIPER1 trial key — do not redistribute\n"
+        f"# customer={customer} edition={EDITION} exp={exp.isoformat()}\n"
+        f"{key}\n",
+        encoding="utf-8",
+    )
+    print("Packed license.key", f"(edition={EDITION}, exp={exp.isoformat()})")
+    if using_default_secret():
+        print("WARNING: signed with DEFAULT dev secret — not for external customers.")
+
+
 def _write_run_demo(path: Path) -> None:
     path.write_text(
         '''#!/usr/bin/env python3
-"""Customer play demo — HVAC duct airflow CFD."""
+"""Customer trial demo — HVAC duct airflow CFD (licensed)."""
 from __future__ import annotations
 
 import json
@@ -120,6 +160,7 @@ if (ROOT / "app").is_dir():
     sys.path.insert(0, str(ROOT))
 
 from app.agents import build_system
+from app.license_gate import exit_on_license_error
 
 CASES = [
     (
@@ -136,6 +177,7 @@ CASES = [
 
 
 def main() -> int:
+    exit_on_license_error()
     for title, prompt in CASES:
         print("=" * 60)
         print(title)
@@ -174,9 +216,17 @@ if __name__ == "__main__":
 
 
 def main() -> int:
-    argparse.ArgumentParser(
-        description="Build HVAC CFD play zip for customer share pack"
-    ).parse_args()
+    p = argparse.ArgumentParser(
+        description="Build HVAC CFD trial zip (licensed like Bracket)"
+    )
+    p.add_argument("--customer", default="evaluation", help="License sub / customer id")
+    p.add_argument("--days", type=int, default=30, help="License validity days")
+    p.add_argument(
+        "--allow-dev-secret",
+        action="store_true",
+        help="Allow default HMAC secret (not for external customers)",
+    )
+    args = p.parse_args()
 
     fw = _framework_repo()
     app_ver = _app_version()
@@ -196,6 +246,12 @@ def main() -> int:
     print("Packed app/")
 
     _write_run_demo(stage / "run_demo.py")
+    _write_license_key(
+        stage / "license.key",
+        customer=args.customer,
+        days=args.days,
+        allow_dev_secret=args.allow_dev_secret,
+    )
 
     for fname in INSTALLER_FILES:
         src = PLAY_META / fname
@@ -206,9 +262,11 @@ def main() -> int:
             print("  missing meta:", fname)
 
     (stage / "RELEASE_NOTES.txt").write_text(
-        f"HVAC CFD Airflow — Play pack (app {app_ver}, framework {fw_ver})\n"
+        f"HVAC CFD Airflow — Trial pack (app {app_ver}, framework {fw_ver})\n"
         f"==========================================================\n\n"
         "Steady RANS k-ω SST HVAC duct demo (stub solver).\n\n"
+        "LICENSE: requires license.key (edition=hvac-cfd), same as Bracket FEA.\n"
+        "Do not redistribute the key. Signing secret is never shipped.\n\n"
         "Install:\n"
         "  python install.py\n"
         "  python run_demo.py\n\n"
