@@ -1,10 +1,15 @@
-HVAC CFD Airflow — Play / Evaluation Package
+HVAC CFD Airflow — Trial / Evaluation Package
 
 Copyright (c) 2026 Wei-Shan Chiang. All rights reserved.
 
 Personal intellectual property of Wei-Shan Chiang; independent of any former employer.
 
 This package is provided for evaluation and study only. Solvers are stubs.
+
+LICENSE KEY (same mechanism as Bracket FEA trial):
+  A valid AFIPER1 license.key is required (edition=hvac-cfd or full-trial).
+  Place the key in license.key next to run_demo.py, or set AGENT_SKILL_LICENSE_KEY.
+  Do not redistribute the key. The signing secret is never shipped in this package.
 
 No license is granted to redistribute, sublicense, or use in production without a
 separate written agreement with the Owner.
