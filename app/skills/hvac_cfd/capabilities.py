@@ -1,10 +1,16 @@
-"""HVAC duct CFD capabilities (stubs — swap run_rans_cfd for real solver/MCP later).
+"""HVAC duct CFD capabilities (demo RANS metrics — swap run_rans_cfd for real solver/MCP later).
+
+SkillDesk connector: write_hvac_artifact always leaves durable JSON+CSV under results/.
 
 Schema convention for agent-skill-ui I/O filter:
   - "field": "float"     → required
   - "field": "float?"    → optional (still accepted at runtime)
 """
 from __future__ import annotations
+
+import csv
+import json
+from pathlib import Path
 
 from agent_skill_framework import capability, composite
 
@@ -58,7 +64,6 @@ def build_duct_case(input: dict) -> dict:
     input_schema={
         "case_file": "str",
         "inlet_mass_flow_kg_s": "float",
-        # Optional: defaults to uniform dampers when omitted
         "damper_fractions": "list?",
     },
     output_schema={
@@ -93,6 +98,7 @@ def run_rans_cfd(input: dict) -> dict:
         "uniformity_index": uni,
         "max_ti_near_bends": ti,
         "branch_delta_p_Pa": branches,
+        "solver_mode": "stub",
         "velocity_contour": "results/velocity.png",
         "pressure_map": "results/pressure.png",
         "output": f"RANS done: ΔP={dp} Pa, UI={uni}, TI_max={ti}",
@@ -106,7 +112,6 @@ def run_rans_cfd(input: dict) -> dict:
         "delta_p_Pa": "float",
         "uniformity_index": "float",
         "max_ti_near_bends": "float",
-        # Targets usually come from shared input JSON
         "max_delta_p_Pa": "float?",
         "min_uniformity": "float?",
     },
@@ -164,13 +169,76 @@ def adjust_dampers(input: dict) -> dict:
     }
 
 
+@capability(
+    name="write_hvac_artifact",
+    description="Write HVAC airflow results JSON + CSV under results/ (SkillDesk durable artifact)",
+    input_schema={
+        "artifact_dir": "str?",
+        "case_file": "str?",
+        "inlet_mass_flow_kg_s": "float?",
+        "delta_p_Pa": "float?",
+        "uniformity_index": "float?",
+        "max_ti_near_bends": "float?",
+        "passed": "bool?",
+        "score": "float?",
+        "damper_fractions": "list?",
+        "solver_mode": "str?",
+    },
+    output_schema={
+        "artifact_json": "str",
+        "artifact_csv": "str",
+        "ok": "bool",
+        "output": "str",
+    },
+)
+def write_hvac_artifact(input: dict) -> dict:
+    out_dir = Path(str(input.get("artifact_dir") or "results/hvac_cfd"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "case_file": input.get("case_file"),
+        "inlet_mass_flow_kg_s": input.get("inlet_mass_flow_kg_s"),
+        "delta_p_Pa": input.get("delta_p_Pa"),
+        "uniformity_index": input.get("uniformity_index"),
+        "max_ti_near_bends": input.get("max_ti_near_bends"),
+        "passed": input.get("passed"),
+        "score": input.get("score"),
+        "damper_fractions": input.get("damper_fractions"),
+        "solver_mode": input.get("solver_mode") or "stub",
+        "product": "hvac-cfd-airflow",
+        "platform": "SkillDesk",
+    }
+    json_path = out_dir / "hvac_results.json"
+    csv_path = out_dir / "hvac_results.csv"
+    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    with csv_path.open("w", newline="", encoding="utf-8") as f:
+        w = csv.writer(f)
+        w.writerow(["key", "value"])
+        for k, v in payload.items():
+            w.writerow([k, v])
+    return {
+        "ok": True,
+        "artifact_json": str(json_path),
+        "artifact_csv": str(csv_path),
+        "artifact_dir": str(out_dir),
+        "passed": input.get("passed"),
+        "score": input.get("score"),
+        "delta_p_Pa": input.get("delta_p_Pa"),
+        "output": f"Wrote HVAC artifacts {json_path} and {csv_path}",
+    }
+
+
 hvac_airflow_pipeline = composite(
     name="hvac_airflow_pipeline",
     description=(
         "Full HVAC airflow study: build duct case → steady RANS k-ω SST → "
-        "evaluate pressure drop, uniformity, and turbulence"
+        "evaluate metrics → write artifacts"
     ),
-    steps=["build_duct_case", "run_rans_cfd", "evaluate_hvac_metrics"],
+    steps=[
+        "build_duct_case",
+        "run_rans_cfd",
+        "evaluate_hvac_metrics",
+        "write_hvac_artifact",
+    ],
     input_schema={
         "case_name": "str",
         "inlet_mass_flow_kg_s": "float",
@@ -178,14 +246,19 @@ hvac_airflow_pipeline = composite(
         "max_delta_p_Pa": "float?",
         "min_uniformity": "float?",
     },
-    output_schema={"ok": "bool", "passed": "bool", "output": "str"},
+    output_schema={
+        "ok": "bool",
+        "passed": "bool",
+        "artifact_json": "str",
+        "output": "str",
+    },
 )
 
 hvac_optimize_dampers_pipeline = composite(
     name="hvac_optimize_dampers_pipeline",
     description=(
         "Optimize airflow distribution: CFD baseline → adjust dampers → "
-        "re-solve → evaluate metrics"
+        "re-solve → evaluate → write artifacts"
     ),
     steps=[
         "build_duct_case",
@@ -193,6 +266,7 @@ hvac_optimize_dampers_pipeline = composite(
         "adjust_dampers",
         "run_rans_cfd",
         "evaluate_hvac_metrics",
+        "write_hvac_artifact",
     ],
     input_schema={
         "case_name": "str",
@@ -200,5 +274,10 @@ hvac_optimize_dampers_pipeline = composite(
         "max_delta_p_Pa": "float?",
         "min_uniformity": "float?",
     },
-    output_schema={"ok": "bool", "passed": "bool", "output": "str"},
+    output_schema={
+        "ok": "bool",
+        "passed": "bool",
+        "artifact_json": "str",
+        "output": "str",
+    },
 )
