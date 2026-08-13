@@ -1,17 +1,18 @@
 """CLI entry: python -m app.main \"Run RANS on HVAC ducts\"
 
 After each run, SkillDesk writes ``results/runs/<run_id>.json`` (WP1 lineage).
+Benchmarks: export SKILLDESK_SMOKE=1 to skip hard license gate.
 """
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
 _ROOT = Path(__file__).resolve().parents[1]
 
 from app.agents import build_system
-from app.license_gate import exit_on_license_error
 
 try:
     from skilldesk import write_run_record
@@ -19,13 +20,25 @@ except ImportError:
     from agent_skill_framework import write_run_record
 
 DEFAULT_PROMPT = (
-    "Run steady RANS k-ω SST on the multi-branch HVAC duct network "
+    "Run steady RANS k-omega SST on the multi-branch HVAC duct network "
     "and report pressure drop and diffuser uniformity"
 )
 
 
 def main(prompt: str) -> dict:
-    exit_on_license_error()
+    smoke = os.environ.get("SKILLDESK_SMOKE", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if not smoke:
+        from app.license_gate import exit_on_license_error
+
+        exit_on_license_error()
+    else:
+        print("[SKILLDESK_SMOKE] license gate skipped (benchmark / local only)")
+
     agent, status = build_system()
     print(status)
     raw = agent.handle(prompt)
