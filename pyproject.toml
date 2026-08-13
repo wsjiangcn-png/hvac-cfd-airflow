@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "hvac-cfd-airflow"
 version = "0.1.0"
-description = "HVAC duct airflow CFD desk on agent-skill-framework"
+description = "HVAC duct airflow CFD desk on SkillDesk / agent-skill-framework"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Proprietary — Copyright (c) 2026 Wei-Shan Chiang. All rights reserved. Personal intellectual property; independent of any former employer." }
 authors = [{ name = "Wei-Shan Chiang" }]
 dependencies = [
-    "agent-skill-framework>=0.9.0",
+    "agent-skill-framework>=0.9.4,<0.10",
 ]
 
 [project.optional-dependencies]
@@ -23,8 +23,11 @@ ui = ["streamlit>=1.28"]
 [project.urls]
 Homepage = "https://github.com/wsjiangcn-png/hvac-cfd-airflow"
 Framework = "https://github.com/wsjiangcn-png/Agent-Skill-Framework"
+Hub = "https://github.com/wsjiangcn-png/SkillDesk"
 UI = "https://github.com/wsjiangcn-png/agent-skill-ui"
 
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["app*"]
+
+# Prefer: import skilldesk
